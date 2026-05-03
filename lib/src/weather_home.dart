@@ -630,6 +630,7 @@ class _CitySearchPanelState extends State<CitySearchPanel> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 MosaicPressFeedback(
                   onPressed: scope.pop,
@@ -644,6 +645,7 @@ class _CitySearchPanelState extends State<CitySearchPanel> {
                       '←',
                       style: tokens.typography.title.copyWith(
                         color: tokens.color.textPrimary,
+                        height: 1,
                       ),
                     ),
                   ),
@@ -654,6 +656,7 @@ class _CitySearchPanelState extends State<CitySearchPanel> {
                     'Change city',
                     style: tokens.typography.title.copyWith(
                       color: tokens.color.textPrimary,
+                      height: 1,
                     ),
                   ),
                 ),
