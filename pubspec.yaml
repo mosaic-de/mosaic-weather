@@ -1,0 +1,26 @@
+name: weather_demo
+description: Weather reference app for the Mosaic design system. Real Open-Meteo data, no demo state.
+publish_to: none
+
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.38.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mosaic_ui:
+    git:
+      url: git@github.com:mosaic-de/mosaic.git
+      path: packages/mosaic_ui
+  http: ^1.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: false
