@@ -641,6 +641,7 @@ class _CitySearchPanelState extends State<CitySearchPanel> {
                   ),
                   child: Text(
                     '←',
+                    textAlign: TextAlign.center,
                     style: tokens.typography.title.copyWith(
                       color: tokens.color.textPrimary,
                       height: 1,
