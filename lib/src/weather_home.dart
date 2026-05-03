@@ -618,60 +618,57 @@ class _CitySearchPanelState extends State<CitySearchPanel> {
   Widget build(BuildContext context) {
     final tokens = MosaicTheme.of(context);
     final scope = MosaicSurfaceScope.of(context);
-    return Padding(
+    return MosaicPanel(
       padding: EdgeInsets.symmetric(
         horizontal: tokens.spacing.md,
         vertical: tokens.spacing.md,
       ),
-      child: MosaicPanel(
-        padding: EdgeInsets.all(tokens.spacing.md),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                MosaicPressFeedback(
-                  onPressed: scope.pop,
-                  semanticLabel: 'Back',
-                  child: MosaicSurface(
-                    kind: MosaicSurfaceKind.muted,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: tokens.spacing.sm,
-                      vertical: tokens.spacing.xs,
-                    ),
-                    child: Text(
-                      '←',
-                      style: tokens.typography.title.copyWith(
-                        color: tokens.color.textPrimary,
-                        height: 1,
-                      ),
-                    ),
+      child: Column(
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              MosaicPressFeedback(
+                onPressed: scope.pop,
+                semanticLabel: 'Back',
+                child: MosaicSurface(
+                  kind: MosaicSurfaceKind.muted,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: tokens.spacing.sm,
+                    vertical: tokens.spacing.xs,
                   ),
-                ),
-                SizedBox(width: tokens.spacing.md),
-                Expanded(
                   child: Text(
-                    'Change city',
+                    '←',
                     style: tokens.typography.title.copyWith(
                       color: tokens.color.textPrimary,
                       height: 1,
                     ),
                   ),
                 ),
-              ],
-            ),
-            SizedBox(height: tokens.spacing.md),
-            MosaicSearchInput(
-              placeholder: 'City',
-              autofocus: true,
-              onChanged: _runSearch,
-            ),
-            SizedBox(height: tokens.spacing.sm),
-            Flexible(child: _resultBody(tokens, scope)),
-          ],
-        ),
+              ),
+              SizedBox(width: tokens.spacing.md),
+              Expanded(
+                child: Text(
+                  'Change city',
+                  style: tokens.typography.title.copyWith(
+                    color: tokens.color.textPrimary,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: tokens.spacing.md),
+          MosaicSearchInput(
+            placeholder: 'City',
+            autofocus: true,
+            onChanged: _runSearch,
+          ),
+          SizedBox(height: tokens.spacing.sm),
+          Expanded(child: _resultBody(tokens, scope)),
+        ],
       ),
     );
   }
