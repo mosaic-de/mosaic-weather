@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// A geographic place. Either resolved from IP or returned by the
 /// Open-Meteo geocoding endpoint.
@@ -316,8 +317,14 @@ class WeatherClient {
 
 /// Owns the active [Place] and the latest [WeatherSnapshot] / fetch
 /// state. UI binds via [snapshot] (a [ValueListenable]).
+///
+/// Persists the last-selected place via SharedPreferences so launches
+/// after the first show the user's chosen city immediately, before any
+/// network call resolves.
 class WeatherStore {
   WeatherStore({WeatherClient? client}) : _client = client ?? WeatherClient();
+
+  static const _prefsKey = 'weather_demo.last_place';
 
   final WeatherClient _client;
   Timer? _refreshTimer;
@@ -329,11 +336,18 @@ class WeatherStore {
 
   Future<void> bootstrap() async {
     snapshot.value = const AsyncWeatherState.loading();
+
+    final saved = await _loadSavedPlace();
+    if (saved != null) {
+      await selectPlace(saved, persist: false);
+      return;
+    }
+
     try {
       final place = await _client.resolveCurrentLocation();
       await selectPlace(place);
-    } catch (e) {
-      // If IP lookup fails, fall back to a sensible default city.
+    } catch (_) {
+      // IP lookup failed and no saved place — fall back to London.
       const fallback = Place(
         name: 'London',
         country: 'United Kingdom',
@@ -345,15 +359,54 @@ class WeatherStore {
     }
   }
 
-  Future<void> selectPlace(Place place) async {
+  Future<void> selectPlace(Place place, {bool persist = true}) async {
     _place = place;
     snapshot.value = AsyncWeatherState.loading(place: place);
+    if (persist) unawaited(_savePlace(place));
     await _refresh();
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(
       const Duration(minutes: 10),
       (_) => unawaited(_refresh()),
     );
+  }
+
+  Future<Place?> _loadSavedPlace() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_prefsKey);
+      if (raw == null) return null;
+      final json = jsonDecode(raw) as Map<String, Object?>;
+      return Place(
+        name: json['name'] as String? ?? '',
+        country: json['country'] as String? ?? '',
+        admin1: json['admin1'] as String?,
+        latitude: (json['latitude'] as num).toDouble(),
+        longitude: (json['longitude'] as num).toDouble(),
+        timezone: json['timezone'] as String?,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _savePlace(Place place) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _prefsKey,
+        jsonEncode(<String, Object?>{
+          'name': place.name,
+          'country': place.country,
+          'admin1': place.admin1,
+          'latitude': place.latitude,
+          'longitude': place.longitude,
+          'timezone': place.timezone,
+        }),
+      );
+    } catch (_) {
+      // Persisting is best-effort. A failure here doesn't break the app.
+    }
   }
 
   Future<void> refresh() => _refresh();
