@@ -165,7 +165,7 @@ packages:
     description:
       path: "packages/mosaic_ui"
       ref: HEAD
-      resolved-ref: b7bfa61014c99fbdc5c827b083044e940f446d4f
+      resolved-ref: cbfe434a60a7ab5e27607ca9a437f053718fe5d5
       url: "git@github.com:mosaic-de/mosaic.git"
     source: git
     version: "0.1.0"

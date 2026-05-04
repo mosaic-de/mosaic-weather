@@ -329,6 +329,7 @@ class WeatherStore {
   final WeatherClient _client;
   Timer? _refreshTimer;
   Place? _place;
+  bool _paused = false;
 
   final ValueNotifier<AsyncWeatherState> snapshot = ValueNotifier(
     const AsyncWeatherState.loading(),
@@ -411,9 +412,32 @@ class WeatherStore {
 
   Future<void> refresh() => _refresh();
 
+  /// Stop the periodic refresh while the app is in the background.
+  /// Idempotent.
+  void pause() {
+    if (_paused) return;
+    _paused = true;
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+  }
+
+  /// Resume polling. Schedules a fresh fetch immediately so the UI
+  /// doesn't sit on stale numbers when the app comes back. Idempotent.
+  void resume() {
+    if (!_paused) return;
+    _paused = false;
+    if (_place == null) return;
+    unawaited(_refresh());
+    _refreshTimer = Timer.periodic(
+      const Duration(minutes: 10),
+      (_) => unawaited(_refresh()),
+    );
+  }
+
   Future<List<Place>> searchCities(String query) => _client.searchCities(query);
 
   Future<void> _refresh() async {
+    if (_paused) return;
     final place = _place;
     if (place == null) return;
     final previous = snapshot.value.snapshot;

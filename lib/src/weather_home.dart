@@ -5,10 +5,39 @@ import 'format.dart';
 import 'weather_codes.dart';
 import 'weather_data.dart';
 
-class WeatherHome extends StatelessWidget {
+class WeatherHome extends StatefulWidget {
   const WeatherHome({super.key, required this.store});
 
   final WeatherStore store;
+
+  @override
+  State<WeatherHome> createState() => _WeatherHomeState();
+}
+
+class _WeatherHomeState extends State<WeatherHome>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final pause = state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden;
+    if (pause) {
+      widget.store.pause();
+    } else if (state == AppLifecycleState.resumed) {
+      widget.store.resume();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,13 +53,13 @@ class WeatherHome extends StatelessWidget {
                 children: [
                   Expanded(
                     child: ValueListenableBuilder<AsyncWeatherState>(
-                      valueListenable: store.snapshot,
+                      valueListenable: widget.store.snapshot,
                       builder: (context, state, _) =>
-                          _Body(state: state, store: store),
+                          _Body(state: state, store: widget.store),
                     ),
                   ),
                   SizedBox(height: tokens.spacing.sm),
-                  _CommandBar(store: store),
+                  _CommandBar(store: widget.store),
                 ],
               ),
             ),
@@ -54,7 +83,11 @@ class _Body extends StatelessWidget {
     }
     final snap = state.snapshot;
     if (snap == null) {
-      return _Error(error: state.error ?? 'No data');
+      return MosaicErrorState(
+        title: 'Could not load weather',
+        body: (state.error ?? 'No data').toString(),
+        onRetry: store.refresh,
+      );
     }
     return _Loaded(state: state, snapshot: snap, store: store);
   }
@@ -69,46 +102,16 @@ class _Loading extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = MosaicTheme.of(context);
     return Center(
-      child: Text(
-        message,
-        style: tokens.typography.body.copyWith(
-          color: tokens.color.textSecondary,
-        ),
-      ),
-    );
-  }
-}
-
-class _Error extends StatelessWidget {
-  const _Error({required this.error});
-
-  final Object error;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = MosaicTheme.of(context);
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(tokens.spacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Could not load weather',
-              style: tokens.typography.title.copyWith(
-                color: tokens.color.textPrimary,
-              ),
-            ),
-            SizedBox(height: tokens.spacing.sm),
-            Text(
-              error.toString(),
-              textAlign: TextAlign.center,
-              style: tokens.typography.body.copyWith(
-                color: tokens.color.textSecondary,
-              ),
-            ),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const MosaicActivityIndicator(size: 32),
+          SizedBox(height: tokens.spacing.md),
+          MosaicText.body(
+            message,
+            tone: MosaicTextTone.secondary,
+          ),
+        ],
       ),
     );
   }
@@ -159,39 +162,24 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = MosaicTheme.of(context);
     final place = state.place ?? state.snapshot?.place;
-    return Padding(
+    final caption = state.snapshot != null
+        ? '${place?.country ?? ''} · '
+            'updated ${formatRelativeFromNow(state.snapshot!.fetchedAt)}'
+        : (state.hasError ? 'Last fetch failed' : null);
+    return MosaicStatusBar(
+      title: place?.displayLabel ?? 'Weather',
+      caption: caption,
       padding: EdgeInsets.symmetric(vertical: tokens.spacing.md),
-      child: Row(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  place?.displayLabel ?? 'Weather',
-                  style: tokens.typography.headline.copyWith(
-                    color: tokens.color.textPrimary,
-                  ),
-                ),
-                if (state.snapshot != null)
-                  Text(
-                    '${place?.country ?? ''} · '
-                    'updated ${formatRelativeFromNow(state.snapshot!.fetchedAt)}'
-                    '${state.isFetching ? ' · refreshing' : ''}',
-                    style: tokens.typography.caption.copyWith(
-                      color: tokens.color.textSecondary,
-                    ),
-                  )
-                else if (state.hasError)
-                  Text(
-                    'Last fetch failed',
-                    style: tokens.typography.caption.copyWith(
-                      color: tokens.color.error,
-                    ),
-                  ),
-              ],
+          if (state.isFetching && state.snapshot != null) ...[
+            const MosaicBadge(
+              label: 'Refreshing',
+              tone: MosaicBadgeTone.accent,
             ),
-          ),
+            SizedBox(width: tokens.spacing.sm),
+          ],
           MosaicPressFeedback(
             onPressed: () {
               MosaicSurfaceScope.of(
@@ -676,45 +664,40 @@ class _CitySearchPanelState extends State<CitySearchPanel> {
 
   Widget _resultBody(MosaicTokens tokens, MosaicSurfaceScope scope) {
     if (_query.trim().length < 2) {
-      return Padding(
-        padding: EdgeInsets.all(tokens.spacing.md),
-        child: Text(
-          'Type at least two letters',
-          style: tokens.typography.body.copyWith(
-            color: tokens.color.textSecondary,
-          ),
-        ),
+      return const MosaicEmptyState(
+        title: 'Type at least two letters',
+        body: 'We search the Open-Meteo geocoding index for any '
+            'city in the world.',
+        glyph: '⌕',
       );
     }
     if (_searching) {
-      return Padding(
-        padding: EdgeInsets.all(tokens.spacing.md),
-        child: Text(
-          'Searching…',
-          style: tokens.typography.body.copyWith(
-            color: tokens.color.textSecondary,
-          ),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const MosaicActivityIndicator(),
+            SizedBox(height: tokens.spacing.md),
+            const MosaicText.body(
+              'Searching…',
+              tone: MosaicTextTone.secondary,
+            ),
+          ],
         ),
       );
     }
     if (_error != null) {
-      return Padding(
-        padding: EdgeInsets.all(tokens.spacing.md),
-        child: Text(
-          'Search failed: $_error',
-          style: tokens.typography.body.copyWith(color: tokens.color.error),
-        ),
+      return MosaicErrorState(
+        title: 'Search failed',
+        body: _error.toString(),
+        onRetry: () => _runSearch(_query),
       );
     }
     if (_results.isEmpty) {
-      return Padding(
-        padding: EdgeInsets.all(tokens.spacing.md),
-        child: Text(
-          'No matches',
-          style: tokens.typography.body.copyWith(
-            color: tokens.color.textSecondary,
-          ),
-        ),
+      return const MosaicEmptyState(
+        title: 'No matches',
+        body: 'Try a different spelling or a nearby major city.',
+        glyph: '⌕',
       );
     }
     return MosaicList(
